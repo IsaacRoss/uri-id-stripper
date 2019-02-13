@@ -1,14 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lib where
+module Lib
+  ( run
+  ) where
 
 import           Control.Applicative hiding (many, (<|>))
 import           Data.Char
 import           Data.List
-import           Data.Text           as T hiding (lines, map, unlines)
+import qualified Data.Text           as T
 import           Text.Parsec
 import           Text.Parsec.Char
 import           Text.Parsec.String
+
+type Text = T.Text
 
 data Uri = Uri
   { prefix   :: Text
@@ -33,9 +37,8 @@ run s =
   where
     ret = parse mainParser "" s
 
-go :: IO ()
-go = interact $ unlines . map run . lines
-
+-- go :: IO ()
+-- go = interact $ unlines . map run . lines
 toText :: [String] -> [Text]
 toText = fmap T.pack
 
@@ -65,25 +68,3 @@ isIdCharacter = liftA2 (||) isDigit isUpper
 
 removeIds :: [Text] -> [Text]
 removeIds = Data.List.filter (not . isId)
--- -- mainParser = httpParser >> protocolParse
--- isId :: String -> Bool
--- isId = liftA2 (&&) longEnough (all isIdCharacter)
---
--- isIdText = isId . Data.Text.unpack
---
--- longEnough :: String -> Bool
--- longEnough = (<) 16 . length
---
--- isIdCharacter :: Char -> Bool
--- isIdCharacter = liftA2 (||) isDigit isUpper
---
--- removeIds :: [String] -> [String]
--- removeIds = filter $ not . isId
---
--- process :: String -> String
--- process =
---   mconcat .
---   intersperse "/" .
---   map Data.Text.unpack .
---   filter (not . isIdText) . Data.Text.splitOn "/" . Data.Text.pack
---

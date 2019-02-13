@@ -1,4 +1,6 @@
 module Main where
 
+import           Lib (run)
+
 main :: IO ()
-main = undefined
+main = interact $ unlines . map run . lines
