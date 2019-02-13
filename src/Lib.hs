@@ -6,7 +6,7 @@ module Lib
 
 import           Control.Applicative hiding (many, (<|>))
 import           Data.Char
-import           Data.List
+import qualified Data.List           as L
 import qualified Data.Text           as T
 import           Text.Parsec
 import           Text.Parsec.Char
@@ -19,28 +19,15 @@ data Uri = Uri
   , segments :: [Text]
   }
 
-mapSegments :: ([Text] -> [Text]) -> Uri -> Uri
-mapSegments f (Uri p xs) = Uri p (f xs)
-
 instance Show Uri where
   show (Uri p xs) = prefix ++ "://" ++ segments
     where
-      merge = mconcat . Data.List.intersperse "/"
+      merge = mconcat . L.intersperse "/"
       prefix = T.unpack p
       segments = T.unpack (merge xs)
 
-run :: String -> String
-run s =
-  case ret of
-    Left e -> "Unable to Parse URI"
-    Right x -> show $ mapSegments (removeIds . T.splitOn "/" . Data.List.head) x
-  where
-    ret = parse mainParser "" s
-
--- go :: IO ()
--- go = interact $ unlines . map run . lines
-toText :: [String] -> [Text]
-toText = fmap T.pack
+removeIds :: [Text] -> [Text]
+removeIds = filter (not . isId)
 
 text :: Parser String
 text = many (noneOf ",\n")
@@ -57,14 +44,25 @@ mainParser = do
   p <- protocolParse
   return $ Uri {prefix = T.pack http, segments = toText p}
 
-meetsLength :: Text -> Bool
-meetsLength = (<) 16 . T.length
-
 isId :: Text -> Bool
 isId = liftA2 (&&) meetsLength (T.all isIdCharacter)
 
 isIdCharacter :: Char -> Bool
 isIdCharacter = liftA2 (||) isDigit isUpper
 
-removeIds :: [Text] -> [Text]
-removeIds = Data.List.filter (not . isId)
+meetsLength :: Text -> Bool
+meetsLength = (<) 16 . T.length
+
+toText :: [String] -> [Text]
+toText = fmap T.pack
+
+mapSegments :: ([Text] -> [Text]) -> Uri -> Uri
+mapSegments f (Uri p xs) = Uri p (f xs)
+
+run :: String -> String
+run s =
+  case ret of
+    Left e  -> "Unable to Parse URI"
+    Right x -> show $ mapSegments (removeIds . T.splitOn "/" . head) x
+  where
+    ret = parse mainParser "" s
