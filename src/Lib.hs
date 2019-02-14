@@ -26,11 +26,8 @@ instance Show Uri where
       prefix = T.unpack p
       segments = T.unpack (merge xs)
 
-removeIds :: [Text] -> [Text]
-removeIds = filter (not . isId)
-
 text :: Parser String
-text = many (noneOf ",\n")
+text = many $ noneOf ",\n"
 
 protocolParse :: Parser [String]
 protocolParse = string "://" >> sepBy text (char '/')
@@ -43,26 +40,23 @@ mainParser = do
   http <- httpParser
   p <- protocolParse
   return $ Uri {prefix = T.pack http, segments = toText p}
+  where
+    toText = fmap T.pack
 
 isId :: Text -> Bool
-isId = liftA2 (&&) meetsLength (T.all isIdCharacter)
+isId = liftA2 (&&) meetsLength allIdChars
+  where
+    allIdChars = T.all isIdCharacter
+    meetsLength = (<) 16 . T.length
 
 isIdCharacter :: Char -> Bool
 isIdCharacter = liftA2 (||) isDigit isUpper
 
-meetsLength :: Text -> Bool
-meetsLength = (<) 16 . T.length
-
-toText :: [String] -> [Text]
-toText = fmap T.pack
-
-mapSegments :: ([Text] -> [Text]) -> Uri -> Uri
-mapSegments f (Uri p xs) = Uri p (f xs)
-
 run :: String -> String
-run s =
-  case ret of
-    Left e  -> "Unable to Parse URI"
-    Right x -> show $ mapSegments (removeIds . T.splitOn "/" . head) x
+run =
+  either (const "Unable to Parse URI") id .
+  fmap (show . transform) . parse mainParser ""
   where
-    ret = parse mainParser "" s
+    transform = mapSegments $ removeIds . T.splitOn "/" . head
+    mapSegments f (Uri p xs) = Uri p (f xs)
+    removeIds = filter (not . isId)
